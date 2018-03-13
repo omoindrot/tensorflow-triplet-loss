@@ -5,8 +5,8 @@ import logging
 import os
 import random
 
+import numpy as np
 import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
 
 from model.input_fn import input_fn
 from model.utils import Params
@@ -19,7 +19,7 @@ from model.training import train_and_evaluate
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_dir', default='experiments/test',
                     help="Experiment directory containing params.json")
-parser.add_argument('--data_dir', default='data/fashion',
+parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, directory or file containing weights to reload before training")
@@ -28,6 +28,7 @@ parser.add_argument('--restore_from', default=None,
 if __name__ == '__main__':
     # Set the random seed for the whole graph for reproductible experiments
     tf.set_random_seed(230)
+    tf.reset_default_graph()
 
     # Load the parameters from json file
     args = parser.parse_args()
@@ -47,9 +48,7 @@ if __name__ == '__main__':
     # Create the input data pipeline
     logging.info("Creating the datasets...")
     data_dir = args.data_dir
-    #TODO: remove source url from here
-    source_url = "http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/"
-    data = input_data.read_data_sets('data/fashion', source_url=source_url)
+    data = tf.contrib.learn.datasets.load_dataset("mnist")
 
     # Specify the sizes of the dataset we train on and evaluate on
     params.train_size = data.train.num_examples
@@ -63,6 +62,15 @@ if __name__ == '__main__':
     logging.info("Creating the model...")
     train_model_spec = model_fn('train', train_inputs, params)
     eval_model_spec = model_fn('eval', eval_inputs, params, reuse=True)
+
+    def save_metadata(file):
+        with open(file, 'w') as f:
+            for i in range(params.eval_size):
+                c = data.test.labels[i]
+                f.write('{}\n'.format(c))
+
+    save_metadata("mnist_metadata.tsv")
+
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))

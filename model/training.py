@@ -3,8 +3,10 @@
 import logging
 import os
 
+import numpy as np
 from tqdm import trange
 import tensorflow as tf
+from tensorflow.contrib.tensorboard.plugins import projector
 
 from model.utils import save_dict_to_json
 from model.evaluation import evaluate_sess
@@ -103,6 +105,7 @@ def train_and_evaluate(train_model_spec, eval_model_spec, model_dir, params, res
             metrics = evaluate_sess(sess, eval_model_spec, num_steps, eval_writer)
 
             # If best_eval, best_save_path
+            """
             eval_acc = metrics['accuracy']
             if eval_acc >= best_eval_acc:
                 # Store new best accuracy
@@ -114,7 +117,44 @@ def train_and_evaluate(train_model_spec, eval_model_spec, model_dir, params, res
                 # Save best eval metrics in a json file in the model directory
                 best_json_path = os.path.join(model_dir, "metrics_eval_best_weights.json")
                 save_dict_to_json(metrics, best_json_path)
+            """
 
             # Save latest eval metrics in a json file in the model directory
             last_json_path = os.path.join(model_dir, "metrics_eval_last_weights.json")
             save_dict_to_json(metrics, last_json_path)
+
+
+        # VISUALIZATION OF EMBEDDINGS
+        sess.run(eval_model_spec['iterator_init_op'])
+
+        embeddings = np.zeros((params.eval_size, params.embedding_size))
+        num_steps = (params.eval_size + params.batch_size - 1) // params.batch_size
+        for t in range(num_steps):
+            p = sess.run(eval_model_spec['embeddings'])
+            start = t * params.batch_size
+            end = min(start + params.batch_size, params.eval_size)
+            embeddings[start:end] = p
+
+        # Visualize test embeddings
+        embedding_var = tf.Variable(embeddings, name='mnist_embedding')
+
+        config = projector.ProjectorConfig()
+        embedding = config.embeddings.add()
+        embedding.tensor_name = embedding_var.name
+
+        # Specify where you find the metadata
+        PATH_TO_SPRITE_IMAGE = "~/workspace/tensorflow-triplet-loss/mnist_10k_sprite.png"
+        PATH_TO_MNIST_METADATA = "~/workspace/tensorflow-triplet-loss/mnist_metadata.tsv"
+        embedding.metadata_path = PATH_TO_MNIST_METADATA
+
+        # Specify where you find the sprite (we will create this later)
+        embedding.sprite.image_path = PATH_TO_SPRITE_IMAGE
+        embedding.sprite.single_image_dim.extend([28,28])
+
+        # Say that you want to visualise the embeddings
+        projector.visualize_embeddings(eval_writer, config)
+
+        sess.run(embedding_var.initializer)
+        saver = tf.train.Saver()
+        # TODO: check number of steps and where to save
+        saver.save(sess, os.path.join(model_dir, "model.ckpt"), 10000)

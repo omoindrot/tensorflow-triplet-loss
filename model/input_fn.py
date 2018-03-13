@@ -59,6 +59,7 @@ def input_fn(is_training, images, labels, params):
         dataset = (tf.data.Dataset.from_tensor_slices((images, labels))
             .shuffle(num_samples)  # whole dataset into the buffer ensures good shuffling
             .map(parse_fn, num_parallel_calls=params.num_parallel_calls)
+            #.map(train_fn, num_parallel_calls=params.num_parallel_calls)
             .batch(params.batch_size)
             .prefetch(1)  # make sure you always have one batch ready to serve
         )
