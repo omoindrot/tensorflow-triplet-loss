@@ -3,28 +3,24 @@
 import tensorflow as tf
 
 
-def build_model(is_training, inputs, params):
+def build_model(is_training, images, params):
     """Compute logits of the model (output distribution)
 
     Args:
         is_training: (bool) whether we are training or not
-        inputs: (dict) contains the inputs of the graph (features, labels...)
+        images: (dict) contains the inputs of the graph (features)
                 this can be `tf.placeholder` or outputs of `tf.data`
         params: (Params) hyperparameters
 
     Returns:
         output: (tf.Tensor) output of the model
     """
-    images = inputs['images']
-
-    assert images.get_shape().as_list() == [None, params.image_size, params.image_size, 3]
-
     out = images
     # Define the number of channels of each convolution
     # For each block, we do: 3x3 conv -> batch norm -> relu -> 2x2 maxpool
     num_channels = params.num_channels
     bn_momentum = params.bn_momentum
-    channels = [num_channels, num_channels * 2, num_channels * 4, num_channels * 8]
+    channels = [num_channels, num_channels * 2]
     for i, c in enumerate(channels):
         with tf.variable_scope('block_{}'.format(i+1)):
             out = tf.layers.conv2d(out, c, 3, padding='same')
@@ -33,11 +29,11 @@ def build_model(is_training, inputs, params):
             out = tf.nn.relu(out)
             out = tf.layers.max_pooling2d(out, 2, 2)
 
-    assert out.get_shape().as_list() == [None, 4, 4, num_channels * 8]
+    assert out.get_shape().as_list() == [None, 7, 7, num_channels * 2]
 
-    out = tf.reshape(out, [-1, 4 * 4 * num_channels * 8])
+    out = tf.reshape(out, [-1, 7 * 7 * num_channels * 2])
     with tf.variable_scope('fc_1'):
-        out = tf.layers.dense(out, num_channels * 8)
+        out = tf.layers.dense(out, num_channels * 2)
         if params.use_batch_norm:
             out = tf.layers.batch_normalization(out, momentum=bn_momentum, training=is_training)
         out = tf.nn.relu(out)
@@ -61,6 +57,10 @@ def model_fn(mode, inputs, params, reuse=False):
         model_spec: (dict) contains the graph operations or nodes needed for training / evaluation
     """
     is_training = (mode == 'train')
+
+    images = inputs['images']
+    assert images.get_shape().as_list() == [None, params.image_size, params.image_size, 1], images
+
     labels = inputs['labels']
     labels = tf.cast(labels, tf.int64)
 
@@ -68,7 +68,7 @@ def model_fn(mode, inputs, params, reuse=False):
     # MODEL: define the layers of the model
     with tf.variable_scope('model', reuse=reuse):
         # Compute the output distribution of the model and the predictions
-        logits = build_model(is_training, inputs, params)
+        logits = build_model(is_training, images, params)
         predictions = tf.argmax(logits, 1)
 
     # Define loss and accuracy
@@ -106,7 +106,7 @@ def model_fn(mode, inputs, params, reuse=False):
     # Summaries for training
     tf.summary.scalar('loss', loss)
     tf.summary.scalar('accuracy', accuracy)
-    tf.summary.image('train_image', inputs['images'])
+    tf.summary.image('train_image', images)
 
     #TODO: if mode == 'eval': ?
     # Add incorrectly labeled images
@@ -115,7 +115,7 @@ def model_fn(mode, inputs, params, reuse=False):
     # Add a different summary to know how they were misclassified
     for label in range(0, params.num_labels):
         mask_label = tf.logical_and(mask, tf.equal(predictions, label))
-        incorrect_image_label = tf.boolean_mask(inputs['images'], mask_label)
+        incorrect_image_label = tf.boolean_mask(images, mask_label)
         tf.summary.image('incorrectly_labeled_{}'.format(label), incorrect_image_label)
 
     # -----------------------------------------------------------

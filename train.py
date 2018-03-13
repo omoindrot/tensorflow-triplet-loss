@@ -6,6 +6,7 @@ import os
 import random
 
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 
 from model.input_fn import input_fn
 from model.utils import Params
@@ -18,7 +19,7 @@ from model.training import train_and_evaluate
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_dir', default='experiments/test',
                     help="Experiment directory containing params.json")
-parser.add_argument('--data_dir', default='data/64x64_SIGNS',
+parser.add_argument('--data_dir', default='data/fashion',
                     help="Directory containing the dataset")
 parser.add_argument('--restore_from', default=None,
                     help="Optional, directory or file containing weights to reload before training")
@@ -46,26 +47,17 @@ if __name__ == '__main__':
     # Create the input data pipeline
     logging.info("Creating the datasets...")
     data_dir = args.data_dir
-    train_data_dir = os.path.join(data_dir, "train_signs")
-    dev_data_dir = os.path.join(data_dir, "dev_signs")
-
-    # Get the filenames from the train and dev sets
-    train_filenames = [os.path.join(train_data_dir, f) for f in os.listdir(train_data_dir)
-                       if f.endswith('.jpg')]
-    eval_filenames = [os.path.join(dev_data_dir, f) for f in os.listdir(dev_data_dir)
-                      if f.endswith('.jpg')]
-
-    # Labels will be between 0 and 5 included (6 classes in total)
-    train_labels = [int(f.split('/')[-1][0]) for f in train_filenames]
-    eval_labels = [int(f.split('/')[-1][0]) for f in eval_filenames]
+    #TODO: remove source url from here
+    source_url = "http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/"
+    data = input_data.read_data_sets('data/fashion', source_url=source_url)
 
     # Specify the sizes of the dataset we train on and evaluate on
-    params.train_size = len(train_filenames)
-    params.eval_size = len(eval_filenames)
+    params.train_size = data.train.num_examples
+    params.eval_size = data.test.num_examples
 
     # Create the two iterators over the two datasets
-    train_inputs = input_fn(True, train_filenames, train_labels, params)
-    eval_inputs = input_fn(False, eval_filenames, eval_labels, params)
+    train_inputs = input_fn(True, data.train.images, data.train.labels, params)
+    eval_inputs = input_fn(False, data.test.images, data.test.labels, params)
 
     # Define the model
     logging.info("Creating the model...")
