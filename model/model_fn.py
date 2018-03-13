@@ -1,5 +1,6 @@
 """Define the model."""
 
+import numpy as np
 import tensorflow as tf
 
 
@@ -36,6 +37,92 @@ def build_model(is_training, images, params):
         out = tf.layers.dense(out, params.embedding_size)
 
     return out
+
+
+def compute_triplet_loss(embeddings, num_classes, num_images_per_class, margin):
+    """Builds the triplet loss over a batch of embeddings.
+
+    The embeddings has `batch_size` elements with `num_classes` different classes.
+    Each class has `num_images_per_class` images.
+    The total batch size is therefore `batch_size = num_classes * num_images_per_class`.
+
+    Args:
+        - embeddings: tensor of shape (batch_size, embed_dim)
+        - num_classes: number of classes
+        - num_images_per_class
+
+    Returns:
+        - triplet_loss: scalar tensor containing the triplet loss
+    """
+    # Compute a 3D tensor of size (batch_size, batch_size, batch_size)
+    # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
+    # Triplet loss: || a - p ||^2 - || a - n ||^2 + margin
+    #             = ||p||^2 - 2 <a, p> - ||n||^2 + 2 <a, n> + margin
+    # TODO: constrain embeddings to have norm 1?
+
+    # Get dot product between all embeddings
+    # shape (batch_size, batch_size)
+    dot_product = tf.matmul(embeddings, tf.transpose(embeddings, [1, 0]))
+
+    # Get squared L2 norm for each embedding
+    square_norm = tf.reduce_sum(tf.square(embeddings), axis=1)  # shape (batch_size,)
+
+    # shape (1, batch_size, 1)
+    positive_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=2)
+
+    # shape (1, 1, batch_size)
+    negative_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=0)
+
+    # shape (batch_size, batch_size, 1)
+    anchor_positive_dot_product = tf.expand_dims(dot_product, axis=2)
+
+    # shape (batch_size, 1, batch_size)
+    anchor_negative_dot_product = tf.expand_dims(dot_product, axis=1)
+
+    triplet_loss = positive_norm - 2 * anchor_positive_dot_product - \
+                   negative_norm + 2 * anchor_negative_dot_product + margin
+
+    # Put to zero the invalid triplets
+    # (where label(a) != label(p) or label(n) == label(a) or a == p)
+    def get_triplet_mask(M, N):
+        """Return a 3D mask where mask[a, p, n] is 1.0 iff the triplet (a, p, n) is valid.
+
+        The input batch will be of size M * N, with M different classes and N images per class.
+        For instance with M = 3, N = 2, the labels would be:
+            [3, 3, 5, 5, 2, 2]
+        """
+        batch_size = M * N
+        mask = np.zeros((batch_size, batch_size, batch_size), dtype=np.float32)
+
+        # Add triplets where label(a) == label(p) and label(a) != label(n)
+        for label in range(M):
+            start = N * label
+            end = N * (label + 1)
+            mask[start:end, start:end, :start] = 1.0
+            mask[start:end, start:end, end:] = 1.0
+
+        # Remove triplets where a == p
+        mask[np.arange(batch_size), np.arange(batch_size), :] = 0.0
+
+        return mask
+
+
+    mask_tensor = tf.constant(get_triplet_mask(num_classes, num_images_per_class))
+    triplet_loss = mask_tensor * triplet_loss
+
+    # Remove negative losses
+    triplet_loss = tf.maximum(triplet_loss, 0.0)
+
+    # Count number of positive triplets (where triplet_loss > 0)
+    valid_triplets = tf.cast(tf.greater(triplet_loss, 0.0), tf.float32)
+    num_valid_triplets = tf.reduce_sum(valid_triplets)
+    fraction_valid_triplets = num_valid_triplets / tf.reduce_sum(mask_tensor)
+
+    # Get final mean triplet loss over the positive valid triplets
+    # TODO: if num_valid_triplets == 0, return 0 loss
+    triplet_loss = tf.reduce_sum(triplet_loss) / (num_valid_triplets + 1e-10)
+
+    return triplet_loss, fraction_valid_triplets
 
 
 def model_fn(mode, inputs, params, reuse=False):
