@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from model.model_fn import compute_triplet_loss
+from model.model_fn import get_triplet_mask
 
 
 def pairwise_distance_np(feature, squared=False):
@@ -34,19 +35,34 @@ def pairwise_distance_np(feature, squared=False):
 class TripletLossTest(unittest.TestCase):
     """Basic test cases."""
 
+    def test_triplet_mask(self):
+        num_data = 64
+        num_classes = 10
+
+        labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
+
+        mask_np = np.zeros((num_data, num_data, num_data))
+        for i in range(num_data):
+            for j in range(num_data):
+                for k in range(num_data):
+                    distinct = (i != j and i != j and j != k)
+                    valid = (labels[i] == labels[j]) and (labels[i] != labels[k])
+                    mask_np[i, j, k] = (distinct and valid)
+
+        mask_tf = get_triplet_mask(labels)
+        with tf.Session() as sess:
+            mask_tf_val = sess.run(mask_tf)
+
+        assert np.allclose(mask_np, mask_tf_val)
+
     def test_triplet_loss(self):
-        num_img_per_class = 4
-        num_classes = 3
-        num_data = num_img_per_class * num_classes
+        num_data = 10
         feat_dim = 6
-        margin = 1.0
+        margin = 0.2
+        num_classes = 5
 
         embeddings = np.random.rand(num_data, feat_dim).astype(np.float32)
-        labels = np.zeros(num_data)
-        for label in range(num_classes):
-            start = label * num_img_per_class
-            end = start + num_img_per_class
-            labels[start:end] = label
+        labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
 
         pdist_matrix = pairwise_distance_np(embeddings, squared=True)
 
@@ -73,7 +89,7 @@ class TripletLossTest(unittest.TestCase):
         loss_np /= num_positives
 
         # Compute the loss in TF.
-        loss_tf, fraction = compute_triplet_loss(embeddings, num_classes, num_img_per_class, margin)
+        loss_tf, fraction = compute_triplet_loss(labels, embeddings, margin)
         with tf.Session() as sess:
             loss_tf_val, fraction_val = sess.run([loss_tf, fraction])
         assert np.allclose(loss_np, loss_tf_val)
