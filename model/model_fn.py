@@ -72,8 +72,10 @@ def get_triplet_mask(labels):
     return mask
 
 
-def compute_triplet_loss(labels, embeddings, margin):
+def batch_all_triplet_loss(labels, embeddings, margin):
     """Builds the triplet loss over a batch of embeddings.
+
+    We generate all the valid triplets and average the loss over the positive ones.
 
     Args:
         labels: labels of the batch, of size (batch_size,)
@@ -163,7 +165,7 @@ def model_fn(mode, inputs, params, reuse=False):
 
     # Define loss and accuracy
     #loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
-    loss, fraction = compute_triplet_loss(labels, embeddings, margin=params.margin)
+    loss, fraction = batch_all_triplet_loss(labels, embeddings, margin=params.margin)
     #accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
     # Define training step that minimizes the loss with the Adam optimizer
