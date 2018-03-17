@@ -5,8 +5,11 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-from model.model_fn import compute_triplet_loss
-from model.model_fn import get_triplet_mask
+from model.triplet_loss import batch_all_triplet_loss
+from model.triplet_loss import batch_hard_triplet_loss
+from model.triplet_loss import get_triplet_mask
+from model.triplet_loss import get_anchor_positive_triplet_mask
+from model.triplet_loss import get_anchor_negative_triplet_mask
 
 
 def pairwise_distance_np(feature, squared=False):
@@ -55,7 +58,46 @@ class TripletLossTest(unittest.TestCase):
 
         assert np.allclose(mask_np, mask_tf_val)
 
-    def test_triplet_loss(self):
+    def test_anchor_positive_triplet_mask(self):
+        num_data = 64
+        num_classes = 10
+
+        labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
+
+        mask_np = np.zeros((num_data, num_data, 1))
+        for i in range(num_data):
+            for j in range(num_data):
+                distinct = (i != j)
+                valid = labels[i] == labels[j]
+                mask_np[i, j, 0] = (distinct and valid)
+
+        mask_tf = get_anchor_positive_triplet_mask(labels)
+        with tf.Session() as sess:
+            mask_tf_val = sess.run(mask_tf)
+
+        assert np.allclose(mask_np, mask_tf_val)
+
+    def test_anchor_negative_triplet_mask(self):
+        num_data = 64
+        num_classes = 10
+
+        labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
+
+        mask_np = np.zeros((num_data, 1, num_data))
+        for i in range(num_data):
+            for k in range(num_data):
+                distinct = (i != k)
+                valid = (labels[i] != labels[k])
+                mask_np[i, 0, k] = (distinct and valid)
+
+        mask_tf = get_anchor_negative_triplet_mask(labels)
+        with tf.Session() as sess:
+            mask_tf_val = sess.run(mask_tf)
+
+        assert np.allclose(mask_np, mask_tf_val)
+
+    def test_batch_all_triplet_loss(self):
+        """Test the triplet loss with batch all triplet mining"""
         num_data = 10
         feat_dim = 6
         margin = 0.2
@@ -89,14 +131,45 @@ class TripletLossTest(unittest.TestCase):
         loss_np /= num_positives
 
         # Compute the loss in TF.
-        loss_tf, fraction = compute_triplet_loss(labels, embeddings, margin)
+        loss_tf, fraction = batch_all_triplet_loss(labels, embeddings, margin)
         with tf.Session() as sess:
             loss_tf_val, fraction_val = sess.run([loss_tf, fraction])
         assert np.allclose(loss_np, loss_tf_val)
         assert np.allclose(num_positives / num_valid, fraction_val)
 
+    def test_batch_hard_triplet_loss(self):
+        """Test the triplet loss with batch hard triplet mining"""
+        num_data = 50
+        feat_dim = 6
+        margin = 0.2
+        num_classes = 5
+
+        embeddings = np.random.rand(num_data, feat_dim).astype(np.float32)
+        labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
+
+        pdist_matrix = pairwise_distance_np(embeddings, squared=True)
+
+        loss_np = 0.0
+        num_positives = 0.0
+        num_valid = 0.0
+        for i in range(num_data):
+            # Select the hardest positive
+            max_pos_dist = np.max(pdist_matrix[i][labels==labels[i]])
+
+            # Select the hardest negative
+            min_neg_dist = np.min(pdist_matrix[i][labels!=labels[i]])
+
+            loss = np.maximum(0.0, max_pos_dist - min_neg_dist + margin)
+            loss_np += loss
+
+        loss_np /= num_data
+
+        # Compute the loss in TF.
+        loss_tf = batch_hard_triplet_loss(labels, embeddings, margin)
+        with tf.Session() as sess:
+            loss_tf_val = sess.run(loss_tf)
+        assert np.allclose(loss_np, loss_tf_val)
 
 
 if __name__ == '__main__':
     unittest.main()
-
