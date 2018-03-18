@@ -1,3 +1,4 @@
+nose
 numpy
 Pillow
 tensorflow>=1.6
