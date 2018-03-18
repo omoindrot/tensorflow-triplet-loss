@@ -7,7 +7,8 @@ This code is adapted from code I wrote for [CS230](https://cs230-stanford.github
 
 ## Requirements
 
-We recommend using python3 and a virtual env. The default `venv` should be used, or `virtualenv` with `python3`.
+We recommend using python3 and a virtual environment.
+The default `venv` should be used, or `virtualenv` with `python3`.
 
 ```bash
 python3 -m venv .env
@@ -24,6 +25,17 @@ pip install -r requirements.txt
 python build_dataset.py --data_dir data
 ```
 
+## Test
+
+Run all the tests:
+```bash
+nosetests tests
+```
+
+Run a specific test:
+```bash
+python -m tests.test_triplet_loss
+```
 
 
 ## Resources

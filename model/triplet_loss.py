@@ -106,7 +106,6 @@ def batch_hard_triplet_loss(labels, embeddings, margin):
     # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
     # Triplet loss: || a - p ||^2 - || a - n ||^2 + margin
     #             = ||p||^2 - 2 <a, p> - ||n||^2 + 2 <a, n> + margin
-    # TODO: constrain embeddings to have norm 1?
 
     # Get dot product between all embeddings
     # shape (batch_size, batch_size)
@@ -196,7 +195,6 @@ def batch_all_triplet_loss(labels, embeddings, margin):
     # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
     # Triplet loss: || a - p ||^2 - || a - n ||^2 + margin
     #             = ||p||^2 - 2 <a, p> - ||n||^2 + 2 <a, n> + margin
-    # TODO: constrain embeddings to have norm 1?
 
     # Get dot product between all embeddings
     # shape (batch_size, batch_size)
