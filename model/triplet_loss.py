@@ -3,7 +3,7 @@
 import tensorflow as tf
 
 
-def get_anchor_positive_triplet_mask(labels):
+def _get_anchor_positive_triplet_mask(labels):
     """Return a 3D mask where mask[a, p, 0] is True iff a and p are distinct and have same label.
 
     A triplet (i, j, k) is valid if:
@@ -32,7 +32,7 @@ def get_anchor_positive_triplet_mask(labels):
     return mask
 
 
-def get_anchor_negative_triplet_mask(labels):
+def _get_anchor_negative_triplet_mask(labels):
     """Return a 3D mask where mask[a, 0, n] is True iff a and n have distinct labels.
 
     A triplet (i, j, k) is valid if:
@@ -56,7 +56,7 @@ def get_anchor_negative_triplet_mask(labels):
     return mask
 
 
-def get_triplet_mask(labels):
+def _get_triplet_mask(labels):
     """Return a 3D mask where mask[a, p, n] is True iff the triplet (a, p, n) is valid.
 
     A triplet (i, j, k) is valid if:
@@ -89,6 +89,38 @@ def get_triplet_mask(labels):
     return mask
 
 
+def _pairwise_distances(embeddings, squared=False):
+    """Compute the 2D matrix of distances between all the embeddings.
+
+    Args:
+        embeddings: tensor of shape (batch_size, embed_dim)
+        squared: Boolean. If true, output is the pairwise squared euclidean distance matrix.
+                 If false, output is the pairwise euclidean distance matrix.
+
+    Returns:
+        pairwise_distances: tensor of shape (batch_size, batch_size)
+    """
+    # Get the dot product between all embeddings
+    # shape (batch_size, batch_size)
+    dot_product = tf.matmul(embeddings, tf.transpose(embeddings, [1, 0]))
+
+    # Get squared L2 norm for each embedding. We can just take the diagonal of `dot_product`.
+    # This also provides more numerical stability (the diagonal of the result will be exactly 0).
+    # shape (batch_size,)
+    square_norm = tf.diag_part(dot_product)
+
+    # Compute the pairwise distance matrix as we have:
+    # ||a - b||^2 = ||a||^2  - 2 <a, b> + ||b||^2
+    # shape (batch_size, batch_size)
+    distances = tf.expand_dims(square_norm, 0) - 2.0 * dot_product + tf.expand_dims(square_norm, 1)
+
+    if not squared:
+        distances = tf.sqrt(distances)
+
+    return distances
+
+
+#TODO: add argument for distance to use (squared or not)
 def batch_hard_triplet_loss(labels, embeddings, margin):
     """Builds the triplet loss over a batch of embeddings.
 
@@ -102,45 +134,19 @@ def batch_hard_triplet_loss(labels, embeddings, margin):
     Returns:
         triplet_loss: scalar tensor containing the triplet loss
     """
-    # Compute a 3D tensor of size (batch_size, batch_size, batch_size)
-    # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
-    # Triplet loss: || a - p ||^2 - || a - n ||^2 + margin
-    #             = ||p||^2 - 2 <a, p> - ||n||^2 + 2 <a, n> + margin
-
-    # Get dot product between all embeddings
-    # shape (batch_size, batch_size)
-    dot_product = tf.matmul(embeddings, tf.transpose(embeddings, [1, 0]))
-
-    # Get squared L2 norm for each embedding
-    square_norm = tf.reduce_sum(tf.square(embeddings), axis=1)  # shape (batch_size,)
-
-    # shape (batch_size, 1, 1)
-    anchor_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=1), axis=2)
-    # shape (1, batch_size, 1)
-    positive_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=2)
-    assert positive_norm.shape[0] == 1, "{}".format(positive_norm.shape)
-    assert positive_norm.shape[2] == 1, "{}".format(positive_norm.shape)
-    # shape (1, 1, batch_size)
-    negative_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=0)
-    assert negative_norm.shape[0:2] == (1, 1), "{}".format(negative_norm.shape)
+    # Get the pairwise distance matrix
+    pairwise_dist = _pairwise_distances(embeddings, squared=True)  # TODO: squared argument
 
     # shape (batch_size, batch_size, 1)
-    anchor_positive_dot_product = tf.expand_dims(dot_product, axis=2)
-    assert anchor_positive_dot_product.shape[2] == 1, "{}".format(anchor_positive_dot_product.shape)
-    # shape (batch_size, 1, batch_size)
-    anchor_negative_dot_product = tf.expand_dims(dot_product, axis=1)
-    assert anchor_negative_dot_product.shape[1] == 1, "{}".format(anchor_negative_dot_product.shape)
-
-    # shape (batch_size, batch_size, 1)
-    anchor_positive_dist = anchor_norm - 2.0 * anchor_positive_dot_product + positive_norm
+    anchor_positive_dist = tf.expand_dims(pairwise_dist, 2)
     assert anchor_positive_dist.shape[2] == 1, "{}".format(anchor_positive_dist.shape)
     # shape (batch_size, 1, batch_size)
-    anchor_negative_dist = anchor_norm - 2.0 * anchor_negative_dot_product + negative_norm
+    anchor_negative_dist = tf.expand_dims(pairwise_dist, 1)
     assert anchor_negative_dist.shape[1] == 1, "{}".format(anchor_negative_dist.shape)
 
     # For each anchor, get the hardest positive
     # First, we need to get a mask for every valid positive (they should have same label)
-    mask_anchor_positive = get_anchor_positive_triplet_mask(labels)
+    mask_anchor_positive = _get_anchor_positive_triplet_mask(labels)
     mask_anchor_positive = tf.cast(mask_anchor_positive, tf.float32)
 
     # We put to 0 any element where (a, p) is not valid (valid if a != p and label(a) == label(p))
@@ -152,7 +158,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin):
 
     # For each anchor, get the hardest negative
     # First, we need to get a mask for every valid negative (they should have different labels)
-    mask_anchor_negative = get_anchor_negative_triplet_mask(labels)
+    mask_anchor_negative = _get_anchor_negative_triplet_mask(labels)
     mask_anchor_negative = tf.cast(mask_anchor_negative, tf.float32)
 
     # We transform the distance matrix (a, n) to (max - an_dist),
@@ -178,6 +184,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin):
     return triplet_loss
 
 
+#TODO: add argument for distance to use (squared or not)
 def batch_all_triplet_loss(labels, embeddings, margin):
     """Builds the triplet loss over a batch of embeddings.
 
@@ -191,36 +198,23 @@ def batch_all_triplet_loss(labels, embeddings, margin):
     Returns:
         triplet_loss: scalar tensor containing the triplet loss
     """
-    # Compute a 3D tensor of size (batch_size, batch_size, batch_size)
-    # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
-    # Triplet loss: || a - p ||^2 - || a - n ||^2 + margin
-    #             = ||p||^2 - 2 <a, p> - ||n||^2 + 2 <a, n> + margin
-
-    # Get dot product between all embeddings
-    # shape (batch_size, batch_size)
-    dot_product = tf.matmul(embeddings, tf.transpose(embeddings, [1, 0]))
-
-    # Get squared L2 norm for each embedding
-    square_norm = tf.reduce_sum(tf.square(embeddings), axis=1)  # shape (batch_size,)
-
-    # shape (1, batch_size, 1)
-    positive_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=2)
-
-    # shape (1, 1, batch_size)
-    negative_norm = tf.expand_dims(tf.expand_dims(square_norm, axis=0), axis=0)
+    # Get the pairwise distance matrix
+    pairwise_dist = _pairwise_distances(embeddings, squared=True)  # TODO: squared argument
 
     # shape (batch_size, batch_size, 1)
-    anchor_positive_dot_product = tf.expand_dims(dot_product, axis=2)
-
+    anchor_positive_dist = tf.expand_dims(pairwise_dist, 2)
+    assert anchor_positive_dist.shape[2] == 1, "{}".format(anchor_positive_dist.shape)
     # shape (batch_size, 1, batch_size)
-    anchor_negative_dot_product = tf.expand_dims(dot_product, axis=1)
+    anchor_negative_dist = tf.expand_dims(pairwise_dist, 1)
+    assert anchor_negative_dist.shape[1] == 1, "{}".format(anchor_negative_dist.shape)
 
-    triplet_loss = positive_norm - 2.0 * anchor_positive_dot_product - \
-                   negative_norm + 2.0 * anchor_negative_dot_product + margin
+    # Compute a 3D tensor of size (batch_size, batch_size, batch_size)
+    # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
+    triplet_loss = anchor_positive_dist - anchor_negative_dist + margin
 
     # Put to zero the invalid triplets
     # (where label(a) != label(p) or label(n) == label(a) or a == p)
-    mask = get_triplet_mask(labels)
+    mask = _get_triplet_mask(labels)
     mask = tf.cast(mask, tf.float32)
     triplet_loss = mask * triplet_loss
 

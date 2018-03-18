@@ -7,9 +7,10 @@ import tensorflow as tf
 
 from model.triplet_loss import batch_all_triplet_loss
 from model.triplet_loss import batch_hard_triplet_loss
-from model.triplet_loss import get_triplet_mask
-from model.triplet_loss import get_anchor_positive_triplet_mask
-from model.triplet_loss import get_anchor_negative_triplet_mask
+from model.triplet_loss import _pairwise_distances
+from model.triplet_loss import _get_triplet_mask
+from model.triplet_loss import _get_anchor_positive_triplet_mask
+from model.triplet_loss import _get_anchor_negative_triplet_mask
 
 
 def pairwise_distance_np(feature, squared=False):
@@ -38,6 +39,19 @@ def pairwise_distance_np(feature, squared=False):
 class TripletLossTest(unittest.TestCase):
     """Basic test cases."""
 
+    def test_pairwise_distances(self):
+        num_data = 64
+        feat_dim = 6
+
+        embeddings = np.random.randn(num_data, feat_dim)
+
+        with tf.Session() as sess:
+            for squared in [True, False]:
+                res_np = pairwise_distance_np(embeddings, squared=squared)
+                res_tf = sess.run(_pairwise_distances(embeddings, squared=squared))
+                assert np.allclose(res_np, res_tf)
+
+
     def test_triplet_mask(self):
         num_data = 64
         num_classes = 10
@@ -52,7 +66,7 @@ class TripletLossTest(unittest.TestCase):
                     valid = (labels[i] == labels[j]) and (labels[i] != labels[k])
                     mask_np[i, j, k] = (distinct and valid)
 
-        mask_tf = get_triplet_mask(labels)
+        mask_tf = _get_triplet_mask(labels)
         with tf.Session() as sess:
             mask_tf_val = sess.run(mask_tf)
 
@@ -71,7 +85,7 @@ class TripletLossTest(unittest.TestCase):
                 valid = labels[i] == labels[j]
                 mask_np[i, j, 0] = (distinct and valid)
 
-        mask_tf = get_anchor_positive_triplet_mask(labels)
+        mask_tf = _get_anchor_positive_triplet_mask(labels)
         with tf.Session() as sess:
             mask_tf_val = sess.run(mask_tf)
 
@@ -90,7 +104,7 @@ class TripletLossTest(unittest.TestCase):
                 valid = (labels[i] != labels[k])
                 mask_np[i, 0, k] = (distinct and valid)
 
-        mask_tf = get_anchor_negative_triplet_mask(labels)
+        mask_tf = _get_anchor_negative_triplet_mask(labels)
         with tf.Session() as sess:
             mask_tf_val = sess.run(mask_tf)
 
