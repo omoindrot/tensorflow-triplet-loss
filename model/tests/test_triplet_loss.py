@@ -37,6 +37,7 @@ def pairwise_distance_np(feature, squared=False):
 
 
 def test_pairwise_distances():
+    """Test the pairwise distances function."""
     num_data = 64
     feat_dim = 6
 
@@ -50,12 +51,40 @@ def test_pairwise_distances():
             assert np.allclose(res_np, res_tf)
 
 
+def test_pairwise_distances_are_positive():
+    """Test that the pairwise distances are always positive.
+
+    Use a tricky case where numerical errors are common.
+    """
+    num_data = 64
+    feat_dim = 6
+
+    # Create embeddings very close to each other in [1.0 - 2e-7, 1.0 + 2e-7]
+    # This will encourage errors in the computation
+    embeddings = 1.0 + 2e-7 * np.random.randn(num_data, feat_dim).astype(np.float32)
+    embeddings[1] = embeddings[0]  # to get distance 0
+
+    with tf.Session() as sess:
+        for squared in [True, False]:
+            res_tf = sess.run(_pairwise_distances(embeddings, squared=squared))
+            assert np.all(res_tf >= 0.0)
+
+
 def test_gradients_pairwise_distances():
+    """Check that the gradients of the pairwise distances are not nan.
+
+    This happens if one of the distance is exactly 0.0 (or negative), as the gradient of the
+    square root will be infinite.
+    """
+
     num_data = 64
     feat_dim = 6
 
     embeddings = np.random.randn(num_data, feat_dim).astype(np.float32)
-    embeddings[1] = embeddings[0]  # to get distance 0
+    # Make the first two embeddings equal to get d(0, 1) = 0.0
+    embeddings[1] = embeddings[0]
+    # Make the last 10 embeddings very close to each other
+    embeddings[num_data - 10: num_data] = 1.0 + 2e-7 * np.random.randn(10, feat_dim)
     embeddings = tf.constant(embeddings)
 
     with tf.Session() as sess:
@@ -68,6 +97,7 @@ def test_gradients_pairwise_distances():
 
 
 def test_triplet_mask():
+    """Test function _get_triplet_mask."""
     num_data = 64
     num_classes = 10
 
@@ -89,6 +119,7 @@ def test_triplet_mask():
 
 
 def test_anchor_positive_triplet_mask():
+    """Test function _get_anchor_positive_triplet_mask."""
     num_data = 64
     num_classes = 10
 
@@ -109,6 +140,7 @@ def test_anchor_positive_triplet_mask():
 
 
 def test_anchor_negative_triplet_mask():
+    """Test function _get_anchor_negative_triplet_mask."""
     num_data = 64
     num_classes = 10
 
@@ -129,8 +161,11 @@ def test_anchor_negative_triplet_mask():
 
 
 def test_simple_batch_all_triplet_loss():
-    """Test the triplet loss with batch all triplet mining in a simple case where
-    there is just one class."""
+    """Test the triplet loss with batch all triplet mining in a simple case.
+
+    There is just one class in this super simple edge case, and we want to make sure that
+    the loss is 0.
+    """
     num_data = 10
     feat_dim = 6
     margin = 0.2
