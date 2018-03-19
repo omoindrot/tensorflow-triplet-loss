@@ -1,5 +1,4 @@
-# Triplet loss in TensorFlow
-
+# Triplet loss in TensorFlow [![Build Status](https://travis-ci.org/omoindrot/tensorflow-triplet-loss.svg?branch=master)](https://travis-ci.org/omoindrot/tensorflow-triplet-loss)
 *Author: Olivier Moindrot*
 
 This code is adapted from code I wrote for [CS230](https://cs230-stanford.github.io) in [this repository](https://github.com/cs230-stanford/cs230-code-examples) at `tensorflow/vision`.
