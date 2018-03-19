@@ -26,7 +26,7 @@ pip install -r requirements_gpu.txt
 
 ## Triplet loss
 
-The interesting part, defining triplet loss with triplet mining can be found in [`model/triplet_loss.py`][./model/triplet_loss.py].
+The interesting part, defining triplet loss with triplet mining can be found in [`model/triplet_loss.py`](model/triplet_loss.py).
 
 Everything is explained in the [blog post][blog].
 
