@@ -1,6 +1,6 @@
-nose
 numpy
 Pillow
-tensorflow>=1.6
+pytest
+tensorflow-gpu>=1.6
 tabulate
 tqdm

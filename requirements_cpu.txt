@@ -1,0 +1,6 @@
+numpy
+Pillow
+pytest
+tensorflow>=1.6
+tabulate
+tqdm

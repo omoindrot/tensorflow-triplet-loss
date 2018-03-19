@@ -155,7 +155,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
     mask = tf.cast(mask, tf.float32)
     triplet_loss = mask * triplet_loss
 
-    # Remove negative losses
+    # Remove negative losses (i.e. the easy triplets)
     triplet_loss = tf.maximum(triplet_loss, 0.0)
 
     # Count number of positive triplets (where triplet_loss > 0)
