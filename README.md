@@ -63,7 +63,7 @@ pytest
 
 To run a specific test:
 ```bash
-python -m model.tests.test_triplet_loss
+pytest model/tests/test_triplet_loss.py
 ```
 
 

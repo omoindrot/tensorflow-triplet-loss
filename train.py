@@ -47,8 +47,7 @@ if __name__ == '__main__':
 
     # Create the input data pipeline
     logging.info("Creating the datasets...")
-    data_dir = args.data_dir
-    data = tf.contrib.learn.datasets.load_dataset("mnist")
+    data = tf.contrib.learn.datasets.mnist.load_mnist(args.data_dir)
 
     # Specify the sizes of the dataset we train on and evaluate on
     params.train_size = data.train.num_examples

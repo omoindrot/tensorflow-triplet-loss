@@ -16,9 +16,9 @@ from model.utils import set_logger
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_dir', default='experiments/test',
                     help="Experiment directory containing params.json")
-parser.add_argument('--data_dir', default='data/64x64_SIGNS',
+parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
-parser.add_argument('--restore_from', default='best_weights',
+parser.add_argument('--restore_from', default='last_weights',
                     help="Subdirectory of model dir or file containing the weights")
 
 
@@ -36,21 +36,14 @@ if __name__ == '__main__':
     set_logger(os.path.join(args.model_dir, 'evaluate.log'))
 
     # Create the input data pipeline
-    logging.info("Creating the dataset...")
-    data_dir = args.data_dir
-    test_data_dir = os.path.join(data_dir, "test_signs")
+    logging.info("Creating the datasets...")
+    data = tf.contrib.learn.datasets.mnist.load_mnist(args.data_dir)
 
-    # Get the filenames from the test set
-    test_filenames = os.listdir(test_data_dir)
-    test_filenames = [os.path.join(test_data_dir, f) for f in test_filenames if f.endswith('.jpg')]
-
-    test_labels = [int(f.split('/')[-1][0]) for f in test_filenames]
-
-    # specify the size of the evaluation set
-    params.eval_size = len(test_filenames)
+    # Specify the sizes of the dataset we train on and evaluate on
+    params.eval_size = data.test.num_examples
 
     # create the iterator over the dataset
-    test_inputs = input_fn(False, test_filenames, test_labels, params)
+    test_inputs = input_fn(False, data.test.images, data.test.labels, params)
 
     # Define the model
     logging.info("Creating the model...")

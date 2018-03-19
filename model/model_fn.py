@@ -4,10 +4,11 @@ import numpy as np
 import tensorflow as tf
 
 from model.triplet_loss import batch_all_triplet_loss
+from model.triplet_loss import batch_hard_triplet_loss
 
 
 def build_model(is_training, images, params):
-    """Compute logits of the model (output distribution)
+    """Compute outputs of the model (embeddings for triplet loss).
 
     Args:
         is_training: (bool) whether we are training or not
@@ -32,7 +33,7 @@ def build_model(is_training, images, params):
             out = tf.nn.relu(out)
             out = tf.layers.max_pooling2d(out, 2, 2)
 
-    assert out.get_shape().as_list() == [None, 7, 7, num_channels * 2]
+    assert out.shape[1:] == [7, 7, num_channels * 2]
 
     out = tf.reshape(out, [-1, 7 * 7 * num_channels * 2])
     with tf.variable_scope('fc_1'):
@@ -57,7 +58,7 @@ def model_fn(mode, inputs, params, reuse=False):
     is_training = (mode == 'train')
 
     images = inputs['images']
-    assert images.get_shape().as_list() == [None, params.image_size, params.image_size, 1], images
+    assert images.shape[1:] == [params.image_size, params.image_size, 1]
 
     labels = inputs['labels']
     labels = tf.cast(labels, tf.int64)
@@ -71,7 +72,15 @@ def model_fn(mode, inputs, params, reuse=False):
 
     # Define loss and accuracy
     #loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
-    loss, fraction = batch_all_triplet_loss(labels, embeddings, margin=params.margin)
+    if params.triplet_strategy == "batch_all":
+        loss, fraction = batch_all_triplet_loss(labels, embeddings, margin=params.margin,
+                                                squared=params.squared)
+    elif params.triplet_strategy == "batch_hard":
+        loss = batch_hard_triplet_loss(labels, embeddings, margin=params.margin,
+                                      squared=params.squared)
+    else:
+        raise ValueError("Triplet strategy not recognized: {}".format(params.triplet_strategy))
+
     #accuracy = tf.reduce_mean(tf.cast(tf.equal(labels, predictions), tf.float32))
 
     # Define training step that minimizes the loss with the Adam optimizer
@@ -104,7 +113,8 @@ def model_fn(mode, inputs, params, reuse=False):
 
     # Summaries for training
     tf.summary.scalar('loss', loss)
-    tf.summary.scalar('fraction_positive_triplets', fraction)
+    if params.triplet_strategy == "batch_all":
+        tf.summary.scalar('fraction_positive_triplets', fraction)
     #tf.summary.scalar('accuracy', accuracy)
     tf.summary.image('train_image', images)
 
