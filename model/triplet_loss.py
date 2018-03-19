@@ -4,54 +4,42 @@ import tensorflow as tf
 
 
 def _get_anchor_positive_triplet_mask(labels):
-    """Return a 3D mask where mask[a, p, 0] is True iff a and p are distinct and have same label.
-
-    A triplet (i, j, k) is valid if:
-        - i, j are distinct
-        - labels[i] == labels[j]
+    """Return a 2D mask where mask[a, p] is True iff a and p are distinct and have same label.
 
     Args:
         labels: tf.int32 `Tensor` with shape [batch_size]
 
     Returns:
-        mask: tf.bool `Tensor` with shape [batch_size, batch_size, 1]
+        mask: tf.bool `Tensor` with shape [batch_size, batch_size]
     """
     # Check that i and j are distinct
     indices_equal = tf.cast(tf.eye(tf.shape(labels)[0]), tf.bool)
     indices_not_equal = tf.logical_not(indices_equal)
-    i_not_equal_j = tf.expand_dims(indices_not_equal, 2)
 
     # Check if labels[i] == labels[j]
-    label_equal = tf.equal(tf.expand_dims(labels, 0), tf.expand_dims(labels, 1))
-    label_i_equal_j = tf.expand_dims(label_equal, 2)
+    # Uses broadcasting where the 1st argument has shape (1, batch_size) and the 2nd (batch_size, 1)
+    labels_equal = tf.equal(tf.expand_dims(labels, 0), tf.expand_dims(labels, 1))
 
     # Combine the two masks
-    mask = tf.logical_and(i_not_equal_j, label_i_equal_j)
-    assert mask.shape[2] == 1, "{}".format(mask.shape)
+    mask = tf.logical_and(indices_not_equal, labels_equal)
 
     return mask
 
 
 def _get_anchor_negative_triplet_mask(labels):
-    """Return a 3D mask where mask[a, 0, n] is True iff a and n have distinct labels.
-
-    A triplet (i, j, k) is valid if:
-        - i, k are distinct
-        - labels[i] != labels[k]
+    """Return a 2D mask where mask[a, n] is True iff a and n have distinct labels.
 
     Args:
         labels: tf.int32 `Tensor` with shape [batch_size]
 
     Returns:
-        mask: tf.bool `Tensor` with shape [batch_size, 1, batch_size]
+        mask: tf.bool `Tensor` with shape [batch_size, batch_size]
     """
     # Check if labels[i] != labels[k]
-    label_equal = tf.equal(tf.expand_dims(labels, 0), tf.expand_dims(labels, 1))
-    label_i_equal_k = tf.expand_dims(label_equal, 1)
+    # Uses broadcasting where the 1st argument has shape (1, batch_size) and the 2nd (batch_size, 1)
+    labels_equal = tf.equal(tf.expand_dims(labels, 0), tf.expand_dims(labels, 1))
 
-    # Combine the two masks
-    mask = tf.logical_not(label_i_equal_k)
-    assert mask.shape[1] == 1, "{}".format(mask.shape)
+    mask = tf.logical_not(labels_equal)
 
     return mask
 
@@ -153,7 +141,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
     # (where label(a) != label(p) or label(n) == label(a) or a == p)
     mask = _get_triplet_mask(labels)
     mask = tf.cast(mask, tf.float32)
-    triplet_loss = mask * triplet_loss
+    triplet_loss = tf.multiply(mask, triplet_loss)
 
     # Remove negative losses (i.e. the easy triplets)
     triplet_loss = tf.maximum(triplet_loss, 0.0)
@@ -188,24 +176,16 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
     # Get the pairwise distance matrix
     pairwise_dist = _pairwise_distances(embeddings, squared=squared)
 
-    # shape (batch_size, batch_size, 1)
-    anchor_positive_dist = tf.expand_dims(pairwise_dist, 2)
-    assert anchor_positive_dist.shape[2] == 1, "{}".format(anchor_positive_dist.shape)
-    # shape (batch_size, 1, batch_size)
-    anchor_negative_dist = tf.expand_dims(pairwise_dist, 1)
-    assert anchor_negative_dist.shape[1] == 1, "{}".format(anchor_negative_dist.shape)
-
     # For each anchor, get the hardest positive
     # First, we need to get a mask for every valid positive (they should have same label)
     mask_anchor_positive = _get_anchor_positive_triplet_mask(labels)
     mask_anchor_positive = tf.cast(mask_anchor_positive, tf.float32)
 
     # We put to 0 any element where (a, p) is not valid (valid if a != p and label(a) == label(p))
-    anchor_positive_dist = mask_anchor_positive * anchor_positive_dist
+    anchor_positive_dist = tf.multiply(mask_anchor_positive, pairwise_dist)
 
-    # shape (batch_size, 1, 1)
+    # shape (batch_size, 1)
     hardest_positive_dist = tf.reduce_max(anchor_positive_dist, axis=1, keepdims=True)
-    assert hardest_positive_dist.shape[1:3] == (1, 1)
 
     # For each anchor, get the hardest negative
     # First, we need to get a mask for every valid negative (they should have different labels)
@@ -213,20 +193,20 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
     mask_anchor_negative = tf.cast(mask_anchor_negative, tf.float32)
 
     # We transform the distance matrix (a, n) to (max - an_dist),
-    # then put to 0 elements and take the max
-    max_anchor_negative_dist = tf.reduce_max(anchor_negative_dist, axis=2, keepdims=True)
-    anchor_negative_dist = max_anchor_negative_dist - anchor_negative_dist
+    # then put to 0 mask elements and finally take the max
+    max_anchor_negative_dist = tf.reduce_max(pairwise_dist, axis=1, keepdims=True)
+    anchor_negative_dist = max_anchor_negative_dist - pairwise_dist
 
-    # We put to 0 any element where (a, p) is not valid (valid if a != p and label(a) == label(p))
-    anchor_negative_dist = mask_anchor_negative * anchor_negative_dist
+    # We put to 0 any element where (a, n) is not valid (i.e. label(a) == label(n))
+    anchor_negative_dist = tf.multiply(mask_anchor_negative, anchor_negative_dist)
 
-    # shape (batch_size, 1, 1)
-    hardest_negative_dist = tf.reduce_max(anchor_negative_dist, axis=2, keepdims=True)
-    assert hardest_negative_dist.shape[1:3] == (1, 1)
+    # shape (batch_size,)
+    hardest_negative_dist = tf.reduce_max(anchor_negative_dist, axis=1, keepdims=True)
 
     # Change it back to the normal distance
     hardest_negative_dist = max_anchor_negative_dist - hardest_negative_dist
 
+    # Combine biggest d(a, p) and smallest d(a, n) into final triplet loss
     triplet_loss = tf.maximum(hardest_positive_dist - hardest_negative_dist + margin, 0.0)
 
     # Get final mean triplet loss

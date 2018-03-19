@@ -78,12 +78,12 @@ class TripletLossTest(unittest.TestCase):
 
         labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
 
-        mask_np = np.zeros((num_data, num_data, 1))
+        mask_np = np.zeros((num_data, num_data))
         for i in range(num_data):
             for j in range(num_data):
                 distinct = (i != j)
                 valid = labels[i] == labels[j]
-                mask_np[i, j, 0] = (distinct and valid)
+                mask_np[i, j] = (distinct and valid)
 
         mask_tf = _get_anchor_positive_triplet_mask(labels)
         with tf.Session() as sess:
@@ -97,12 +97,12 @@ class TripletLossTest(unittest.TestCase):
 
         labels = np.random.randint(0, num_classes, size=(num_data)).astype(np.float32)
 
-        mask_np = np.zeros((num_data, 1, num_data))
+        mask_np = np.zeros((num_data, num_data))
         for i in range(num_data):
             for k in range(num_data):
                 distinct = (i != k)
                 valid = (labels[i] != labels[k])
-                mask_np[i, 0, k] = (distinct and valid)
+                mask_np[i, k] = (distinct and valid)
 
         mask_tf = _get_anchor_negative_triplet_mask(labels)
         with tf.Session() as sess:
