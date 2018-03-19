@@ -109,7 +109,7 @@ def _pairwise_distances(embeddings, squared=False):
 
 
 def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
-    """Builds the triplet loss over a batch of embeddings.
+    """Build the triplet loss over a batch of embeddings.
 
     We generate all the valid triplets and average the loss over the positive ones.
 
@@ -135,6 +135,8 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
 
     # Compute a 3D tensor of size (batch_size, batch_size, batch_size)
     # triplet_loss[i, j, k] will contain the triplet loss of anchor=i, positive=j, negative=k
+    # Uses broadcasting where the 1st argument has shape (batch_size, batch_size, 1)
+    # and the 2nd (batch_size, 1, batch_size)
     triplet_loss = anchor_positive_dist - anchor_negative_dist + margin
 
     # Put to zero the invalid triplets
@@ -159,7 +161,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
 
 
 def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
-    """Builds the triplet loss over a batch of embeddings.
+    """Build the triplet loss over a batch of embeddings.
 
     For each anchor, we get the hardest positive and hardest negative to form a triplet.
 
@@ -192,19 +194,12 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
     mask_anchor_negative = _get_anchor_negative_triplet_mask(labels)
     mask_anchor_negative = tf.cast(mask_anchor_negative, tf.float32)
 
-    # We transform the distance matrix (a, n) to (max - an_dist),
-    # then put to 0 mask elements and finally take the max
+    # We add the maximum value in each row to the invalid negatives (label(a) == label(n))
     max_anchor_negative_dist = tf.reduce_max(pairwise_dist, axis=1, keepdims=True)
-    anchor_negative_dist = max_anchor_negative_dist - pairwise_dist
-
-    # We put to 0 any element where (a, n) is not valid (i.e. label(a) == label(n))
-    anchor_negative_dist = tf.multiply(mask_anchor_negative, anchor_negative_dist)
+    anchor_negative_dist = pairwise_dist + max_anchor_negative_dist * (1.0 - mask_anchor_negative)
 
     # shape (batch_size,)
-    hardest_negative_dist = tf.reduce_max(anchor_negative_dist, axis=1, keepdims=True)
-
-    # Change it back to the normal distance
-    hardest_negative_dist = max_anchor_negative_dist - hardest_negative_dist
+    hardest_negative_dist = tf.reduce_min(anchor_negative_dist, axis=1, keepdims=True)
 
     # Combine biggest d(a, p) and smallest d(a, n) into final triplet loss
     triplet_loss = tf.maximum(hardest_positive_dist - hardest_negative_dist + margin, 0.0)
