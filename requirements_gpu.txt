@@ -1,5 +1,4 @@
 numpy
-Pillow
 pytest
 tensorflow-gpu>=1.6
 tabulate

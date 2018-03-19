@@ -63,14 +63,12 @@ if __name__ == '__main__':
     train_model_spec = model_fn('train', train_inputs, params)
     eval_model_spec = model_fn('eval', eval_inputs, params, reuse=True)
 
-    def save_metadata(file):
-        with open(file, 'w') as f:
-            for i in range(params.eval_size):
-                c = data.test.labels[i]
-                f.write('{}\n'.format(c))
-
-    save_metadata("mnist_metadata.tsv")
-
+    # Save the metadata file needed for Tensorboard projector
+    filename = "mnist_metadata.tsv"
+    with open(filename, 'w') as f:
+        for i in range(params.eval_size):
+            c = data.test.labels[i]
+            f.write('{}\n'.format(c))
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
