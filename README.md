@@ -26,6 +26,12 @@ pip install -r requirements_gpu.txt
 
 ## Triplet loss
 
+|![triplet-loss-img] |
+|:--:|
+| *Triplet loss on two positive faces (Obama) and one negative face (Macron)* |
+
+
+
 The interesting part, defining triplet loss with triplet mining can be found in [`model/triplet_loss.py`](model/triplet_loss.py).
 
 Everything is explained in the [blog post][blog].
@@ -67,6 +73,10 @@ And run tensorboard in the experiment directory:
 tensorboard --logdir experiments/base_model
 ```
 
+|![embeddings-img] |
+|:--:|
+| *Embeddings of the MNIST test images visualized with T-SNE (perplexity 25)* |
+
 
 
 ## Test
@@ -94,10 +104,10 @@ pytest model/tests/test_triplet_loss.py
 
 
 [blog]: https://omoindrot.github.io/triplet-loss
-[triplet-types-img]: images/triplets.png
-[triplet-loss-img]: images/triplet_loss.png
-[online-triplet-loss-img]: images/online_triplet_loss.png
-[embeddings-img]: images/embeddings.gif
+[triplet-types-img]: https://omoindrot.github.io/images/triplets.png
+[triplet-loss-img]: https://omoindrot.github.io/images/triplet_loss.png
+[online-triplet-loss-img]: https://omoindrot.github.io/images/online_triplet_loss.png
+[embeddings-img]: https://omoindrot.github.io/images/embeddings.gif
 [openface-blog]: http://bamos.github.io/2016/01/19/openface-0.2.0/
 [facenet]: https://arxiv.org/abs/1503.03832
 [in-defense]: https://arxiv.org/abs/1703.07737
