@@ -12,7 +12,7 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/learning_rate',
                     help="Directory containing params.json")
-parser.add_argument('--data_dir', default='data/64x64_SIGNS',
+parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
 
 
@@ -34,8 +34,8 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
     params.save(json_path)
 
     # Launch training with this config
-    cmd = "{python} train.py --model_dir {model_dir} --data_dir {data_dir}".format(python=PYTHON,
-            model_dir=model_dir, data_dir=data_dir)
+    cmd = "{python} train.py --model_dir {model_dir} --data_dir {data_dir}"
+    cmd = cmd.format(python=PYTHON, model_dir=model_dir, data_dir=data_dir)
     print(cmd)
     check_call(cmd, shell=True)
 

@@ -1,7 +1,5 @@
 """Test for the triplet loss computation."""
 
-import unittest
-
 import numpy as np
 import tensorflow as tf
 
@@ -215,8 +213,7 @@ def test_batch_all_triplet_loss():
                         loss = np.maximum(0.0, pos_distance - neg_distance + margin)
                         loss_np += loss
 
-                        if loss > 0:
-                            num_positives += 1.0
+                        num_positives += (loss > 0)
 
         loss_np /= num_positives
 
@@ -242,14 +239,12 @@ def test_batch_hard_triplet_loss():
         pdist_matrix = pairwise_distance_np(embeddings, squared=squared)
 
         loss_np = 0.0
-        num_positives = 0.0
-        num_valid = 0.0
         for i in range(num_data):
             # Select the hardest positive
-            max_pos_dist = np.max(pdist_matrix[i][labels==labels[i]])
+            max_pos_dist = np.max(pdist_matrix[i][labels == labels[i]])
 
             # Select the hardest negative
-            min_neg_dist = np.min(pdist_matrix[i][labels!=labels[i]])
+            min_neg_dist = np.min(pdist_matrix[i][labels != labels[i]])
 
             loss = np.maximum(0.0, max_pos_dist - min_neg_dist + margin)
             loss_np += loss

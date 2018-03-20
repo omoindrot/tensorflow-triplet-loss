@@ -38,6 +38,7 @@ def input_fn(is_training, images, labels, params):
     if is_training:
         dataset = (tf.data.Dataset.from_tensor_slices((images, labels))
             .shuffle(num_samples)  # whole dataset into the buffer ensures good shuffling
+            .repeat(params.num_epochs)  # repeat for multiple epochs
             .map(parse_fn, num_parallel_calls=params.num_parallel_calls)
             .batch(params.batch_size)
             .prefetch(1)  # make sure you always have one batch ready to serve
@@ -49,10 +50,5 @@ def input_fn(is_training, images, labels, params):
             .prefetch(1)  # make sure you always have one batch ready to serve
         )
 
-    # Create reinitializable iterator from dataset
-    iterator = dataset.make_initializable_iterator()
-    images, labels = iterator.get_next()
-    iterator_init_op = iterator.initializer
-
-    inputs = {'images': images, 'labels': labels, 'iterator_init_op': iterator_init_op}
-    return inputs
+    # Return the dataset for tf.estimator (TensorFlow version >= 1.6)
+    return dataset
