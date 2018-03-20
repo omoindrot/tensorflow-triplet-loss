@@ -73,6 +73,7 @@ And run tensorboard in the experiment directory:
 tensorboard --logdir experiments/base_model
 ```
 
+Here is the result ([link][embeddings-gif] to gif):
 |![embeddings-img] |
 |:--:|
 | *Embeddings of the MNIST test images visualized with T-SNE (perplexity 25)* |
@@ -107,6 +108,7 @@ pytest model/tests/test_triplet_loss.py
 [triplet-types-img]: https://omoindrot.github.io/images/triplets.png
 [triplet-loss-img]: https://omoindrot.github.io/images/triplet_loss.png
 [online-triplet-loss-img]: https://omoindrot.github.io/images/online_triplet_loss.png
+[embeddings-img]: https://omoindrot.github.io/images/embeddings.png
 [embeddings-img]: https://omoindrot.github.io/images/embeddings.gif
 [openface-blog]: http://bamos.github.io/2016/01/19/openface-0.2.0/
 [facenet]: https://arxiv.org/abs/1503.03832
