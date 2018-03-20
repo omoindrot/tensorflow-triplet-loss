@@ -74,6 +74,7 @@ tensorboard --logdir experiments/base_model
 ```
 
 Here is the result ([link][embeddings-gif] to gif):
+
 |![embeddings-img] |
 |:--:|
 | *Embeddings of the MNIST test images visualized with T-SNE (perplexity 25)* |
