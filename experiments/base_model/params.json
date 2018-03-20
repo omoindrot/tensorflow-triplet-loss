@@ -6,9 +6,9 @@
     "num_channels": 32,
     "use_batch_norm": false,
     "bn_momentum": 0.9,
-    "margin": 0.2,
+    "margin": 0.5,
     "embedding_size": 64,
-    "triplet_strategy": "batch_hard",
+    "triplet_strategy": "batch_all",
     "squared": false,
 
     "image_size": 28,
