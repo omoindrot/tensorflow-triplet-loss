@@ -109,7 +109,7 @@ pytest model/tests/test_triplet_loss.py
 [triplet-loss-img]: https://omoindrot.github.io/images/triplet_loss.png
 [online-triplet-loss-img]: https://omoindrot.github.io/images/online_triplet_loss.png
 [embeddings-img]: https://omoindrot.github.io/images/embeddings.png
-[embeddings-img]: https://omoindrot.github.io/images/embeddings.gif
+[embeddings-gif]: https://omoindrot.github.io/images/embeddings.gif
 [openface-blog]: http://bamos.github.io/2016/01/19/openface-0.2.0/
 [facenet]: https://arxiv.org/abs/1503.03832
 [in-defense]: https://arxiv.org/abs/1703.07737
