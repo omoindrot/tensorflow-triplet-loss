@@ -199,6 +199,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
 
     # shape (batch_size, 1)
     hardest_positive_dist = tf.reduce_max(anchor_positive_dist, axis=1, keepdims=True)
+    tf.summary.scalar("hardest_positive_dist", tf.reduce_mean(hardest_positive_dist))
 
     # For each anchor, get the hardest negative
     # First, we need to get a mask for every valid negative (they should have different labels)
@@ -211,6 +212,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False):
 
     # shape (batch_size,)
     hardest_negative_dist = tf.reduce_min(anchor_negative_dist, axis=1, keepdims=True)
+    tf.summary.scalar("hardest_negative_dist", tf.reduce_mean(hardest_negative_dist))
 
     # Combine biggest d(a, p) and smallest d(a, n) into final triplet loss
     triplet_loss = tf.maximum(hardest_positive_dist - hardest_negative_dist + margin, 0.0)

@@ -63,6 +63,8 @@ def model_fn(features, labels, mode, params):
     with tf.variable_scope('model'):
         # Compute the embeddings with the model
         embeddings = build_model(is_training, images, params)
+    embedding_mean_norm = tf.reduce_mean(tf.norm(embeddings, axis=1))
+    tf.summary.scalar("embedding_mean_norm", embedding_mean_norm)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         predictions = {'embeddings': embeddings}
@@ -85,7 +87,7 @@ def model_fn(features, labels, mode, params):
     # Metrics for evaluation using tf.metrics (average over whole dataset)
     # TODO: some other metrics like rank-1 accuracy?
     with tf.variable_scope("metrics"):
-        eval_metric_ops = dict()
+        eval_metric_ops = {"embedding_mean_norm": tf.metrics.mean(embedding_mean_norm)}
 
         if params.triplet_strategy == "batch_all":
             eval_metric_ops['fraction_positive_triplets'] = tf.metrics.mean(fraction)
