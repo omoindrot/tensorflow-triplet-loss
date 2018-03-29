@@ -106,11 +106,11 @@ pytest model/tests/test_triplet_loss.py
 
 
 [blog]: https://omoindrot.github.io/triplet-loss
-[triplet-types-img]: https://omoindrot.github.io/images/triplets.png
-[triplet-loss-img]: https://omoindrot.github.io/images/triplet_loss.png
-[online-triplet-loss-img]: https://omoindrot.github.io/images/online_triplet_loss.png
-[embeddings-img]: https://omoindrot.github.io/images/embeddings.png
-[embeddings-gif]: https://omoindrot.github.io/images/embeddings.gif
+[triplet-types-img]: https://omoindrot.github.io/assets/triplet_loss/triplets.png
+[triplet-loss-img]: https://omoindrot.github.io/assets/triplet_loss/triplet_loss.png
+[online-triplet-loss-img]: https://omoindrot.github.io/assets/triplet_loss/online_triplet_loss.png
+[embeddings-img]: https://omoindrot.github.io/assets/triplet_loss/embeddings.png
+[embeddings-gif]: https://omoindrot.github.io/assets/triplet_loss/embeddings.gif
 [openface-blog]: http://bamos.github.io/2016/01/19/openface-0.2.0/
 [facenet]: https://arxiv.org/abs/1503.03832
 [in-defense]: https://arxiv.org/abs/1703.07737
