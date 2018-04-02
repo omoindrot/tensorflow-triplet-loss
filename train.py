@@ -5,7 +5,8 @@ import os
 
 import tensorflow as tf
 
-from model.input_fn import input_fn
+from model.input_fn import train_input_fn
+from model.input_fn import test_input_fn
 from model.model_fn import model_fn
 from model.utils import Params
 
@@ -27,17 +28,10 @@ if __name__ == '__main__':
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    # Create the input data pipeline
-    tf.logging.info("Creating the datasets...")
-    data = tf.contrib.learn.datasets.mnist.load_mnist(args.data_dir)
-
     # Specify the sizes of the dataset we train on and evaluate on
-    params.train_size = data.train.num_examples
-    params.eval_size = data.test.num_examples
-
-    # Create the two input functions over the two datasets
-    train_input_fn = lambda: input_fn(True, data.train.images, data.train.labels, params)
-    test_input_fn = lambda: input_fn(False, data.test.images, data.test.labels, params)
+    # TODO: this should be in the parameters file or somewhere
+    params.train_size = 50000
+    params.eval_size = 10000
 
     # Define the model
     tf.logging.info("Creating the model...")
@@ -48,10 +42,10 @@ if __name__ == '__main__':
 
     # Train the model
     tf.logging.info("Starting training for {} epoch(s).".format(params.num_epochs))
-    estimator.train(train_input_fn)
+    estimator.train(lambda: train_input_fn(args.data_dir, params))
 
     # Evaluate the model on the test set
     tf.logging.info("Evaluation on test set.")
-    res = estimator.evaluate(test_input_fn)
+    res = estimator.evaluate(lambda: test_input_fn(args.data_dir, params))
     for key in res:
         print("{}: {}".format(key, res[key]))
