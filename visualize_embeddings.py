@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pathlib
 import shutil
 
 import numpy as np
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     # Specify where you find the sprite (we will create this later)
     # Copy the embedding sprite image to the eval directory
     shutil.copy2(args.sprite_filename, eval_dir)
-    embedding.sprite.image_path = "mnist_10k_sprite.png"
+    embedding.sprite.image_path = pathlib.Path(args.sprite_filename).name
     embedding.sprite.single_image_dim.extend([28, 28])
 
     # Say that you want to visualise the embeddings
