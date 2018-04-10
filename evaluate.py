@@ -5,7 +5,7 @@ import os
 
 import tensorflow as tf
 
-from model.input_fn import input_fn
+from model.input_fn import test_input_fn
 from model.model_fn import model_fn
 from model.utils import Params
 
@@ -26,10 +26,6 @@ if __name__ == '__main__':
     json_path = os.path.join(args.model_dir, 'params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
-
-    # Specify the sizes of the dataset we evaluate on
-    # TODO: this should in the parameters file or somewhere
-    params.eval_size = 10000
 
     # Define the model
     tf.logging.info("Creating the model...")

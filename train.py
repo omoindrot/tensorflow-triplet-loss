@@ -28,11 +28,6 @@ if __name__ == '__main__':
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    # Specify the sizes of the dataset we train on and evaluate on
-    # TODO: this should be in the parameters file or somewhere
-    params.train_size = 50000
-    params.eval_size = 10000
-
     # Define the model
     tf.logging.info("Creating the model...")
     config = tf.estimator.RunConfig(tf_random_seed=230,

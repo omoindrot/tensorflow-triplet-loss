@@ -13,6 +13,8 @@
 
     "image_size": 28,
     "num_labels": 10,
+    "train_size": 50000,
+    "eval_size": 10000,
 
     "num_parallel_calls": 4,
     "save_summary_steps": 50
