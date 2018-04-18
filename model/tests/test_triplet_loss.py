@@ -105,7 +105,7 @@ def test_triplet_mask():
     for i in range(num_data):
         for j in range(num_data):
             for k in range(num_data):
-                distinct = (i != j and i != j and j != k)
+                distinct = (i != j and i != k and j != k)
                 valid = (labels[i] == labels[j]) and (labels[i] != labels[k])
                 mask_np[i, j, k] = (distinct and valid)
 
@@ -202,7 +202,7 @@ def test_batch_all_triplet_loss():
         for i in range(num_data):
             for j in range(num_data):
                 for k in range(num_data):
-                    distinct = (i != j and i != j and j != k)
+                    distinct = (i != j and i != k and j != k)
                     valid = (labels[i] == labels[j]) and (labels[i] != labels[k])
                     if distinct and valid:
                         num_valid += 1.0
