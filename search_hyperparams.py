@@ -1,4 +1,4 @@
-"""Peform hyperparemeters search"""
+"""Peform hyperparameter search"""
 
 import argparse
 import os

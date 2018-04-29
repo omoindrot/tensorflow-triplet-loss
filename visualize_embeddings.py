@@ -9,12 +9,14 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 
+import model.mnist_dataset as mnist_dataset
 from model.utils import Params
+from model.input_fn import test_input_fn
 from model.model_fn import model_fn
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_dir', default='experiments/test',
+parser.add_argument('--model_dir', default='experiments/base_model',
                     help="Experiment directory containing params.json")
 parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
@@ -32,14 +34,6 @@ if __name__ == '__main__':
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    # Create the input data pipeline
-    tf.logging.info("Creating the datasets...")
-    data = tf.contrib.learn.datasets.mnist.load_mnist(args.data_dir)
-
-    # Specify the sizes of the dataset we train on and evaluate on
-    params.train_size = data.train.num_examples
-    params.eval_size = data.test.num_examples
-
     # Define the model
     tf.logging.info("Creating the model...")
     config = tf.estimator.RunConfig(tf_random_seed=230,
@@ -52,12 +46,9 @@ if __name__ == '__main__':
 
     # Compute embeddings on the test set
     tf.logging.info("Predicting")
-    test_images = data.test.images.reshape((-1, params.image_size, params.image_size, 1))
+    predictions = estimator.predict(lambda: test_input_fn(args.data_dir, params))
 
-    predict_input_fn = tf.estimator.inputs.numpy_input_fn(test_images, num_epochs=1,
-                                                          batch_size=1000, shuffle=False)
-    predictions = estimator.predict(predict_input_fn)
-
+    # TODO (@omoindrot): remove the hard-coded 10000
     embeddings = np.zeros((10000, params.embedding_size))
     for i, p in enumerate(predictions):
         embeddings[i] = p['embeddings']
@@ -74,20 +65,29 @@ if __name__ == '__main__':
     embedding = config.embeddings.add()
     embedding.tensor_name = embedding_var.name
 
-    # Specify where you find the metadata
-    # Save the metadata file needed for Tensorboard projector
-    metadata_filename = "mnist_metadata.tsv"
-    with open(os.path.join(eval_dir, metadata_filename), 'w') as f:
-        for i in range(params.eval_size):
-            c = data.test.labels[i]
-            f.write('{}\n'.format(c))
-    embedding.metadata_path = metadata_filename
-
     # Specify where you find the sprite (we will create this later)
     # Copy the embedding sprite image to the eval directory
     shutil.copy2(args.sprite_filename, eval_dir)
     embedding.sprite.image_path = pathlib.Path(args.sprite_filename).name
     embedding.sprite.single_image_dim.extend([28, 28])
+
+    with tf.Session() as sess:
+        # TODO (@omoindrot): remove the hard-coded 10000
+        # Obtain the test labels
+        dataset = mnist_dataset.test(args.data_dir)
+        dataset = dataset.map(lambda img, lab: lab)
+        dataset = dataset.batch(10000)
+        labels_tensor = dataset.make_one_shot_iterator().get_next()
+        labels = sess.run(labels_tensor)
+
+    # Specify where you find the metadata
+    # Save the metadata file needed for Tensorboard projector
+    metadata_filename = "mnist_metadata.tsv"
+    with open(os.path.join(eval_dir, metadata_filename), 'w') as f:
+        for i in range(params.eval_size):
+            c = labels[i]
+            f.write('{}\n'.format(c))
+    embedding.metadata_path = metadata_filename
 
     # Say that you want to visualise the embeddings
     projector.visualize_embeddings(summary_writer, config)

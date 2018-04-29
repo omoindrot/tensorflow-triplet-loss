@@ -11,7 +11,7 @@ from model.utils import Params
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_dir', default='experiments/test',
+parser.add_argument('--model_dir', default='experiments/base_model',
                     help="Experiment directory containing params.json")
 parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
