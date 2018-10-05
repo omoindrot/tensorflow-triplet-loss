@@ -11,11 +11,9 @@ it is possible to have a batch with only different classes and therefore no trip
 import argparse
 import os
 
-import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.data.python.ops.interleave_ops import DirectedInterleaveDataset
 
-import model.mnist_dataset as mnist_dataset
+from model.input_fn import balanced_train_input_fn
 from model.utils import Params
 
 
@@ -36,33 +34,8 @@ if __name__ == '__main__':
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = Params(json_path)
 
-    # Define the data pipeline
-    # TODO: put this new pipeline in `model/input_fn.py`
-    mnist = mnist_dataset.train(args.data_dir)
-
-    # pylint: disable=cell-var-from-loop
-    datasets = [mnist.filter(lambda img, lab: tf.equal(lab, i)) for i in range(params.num_labels)]
-
-    # TODO: put these in params
-    num_classes_per_batch = 5
-    num_images_per_class = 10
-
-    def generator():
-        while True:
-            # Sample the labels that will compose the batch
-            labels = np.random.choice(range(params.num_labels),
-                                      num_classes_per_batch,
-                                      replace=False)
-            for label in labels:
-                for _ in range(num_images_per_class):
-                    yield label
-
-    selector = tf.data.Dataset.from_generator(generator, tf.int64)
-    dataset = DirectedInterleaveDataset(selector, datasets)
-
-    batch_size = num_classes_per_batch * num_images_per_class
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(1)
+    # Create a balanced test dataset
+    dataset = balanced_train_input_fn(args.data_dir, params)
 
     x = dataset.make_one_shot_iterator().get_next()
 

@@ -64,6 +64,11 @@ def model_fn(features, labels, mode, params):
     with tf.variable_scope('model'):
         # Compute the embeddings with the model
         embeddings = build_model(is_training, images, params)
+
+        # # Optionally L2 normalize the embeddings
+        # if params.l2_normalize:
+        #     embeddings = tf.nn.l2_normalize(embeddings, axis=1)
+
     embedding_mean_norm = tf.reduce_mean(tf.norm(embeddings, axis=1))
     tf.summary.scalar("embedding_mean_norm", embedding_mean_norm)
 
