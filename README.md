@@ -59,7 +59,7 @@ To run a new experiment called `base_model`, do:
 python train.py --model_dir experiments/base_model
 ```
 
-You will first need to create a configuration file like this one: [`params.json`](experiments/base_model/params.json).
+You will first need to create a configuration file like this one: [`params.json`](experiments/batch_all/params.json).
 This json file specifies all the hyperparameters for the model.
 All the weights and summaries will be saved in the `model_dir`.
 
